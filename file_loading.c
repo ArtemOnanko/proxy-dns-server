@@ -44,6 +44,12 @@ void load_init(void)
     localaddr[i] = '\0';
     
     printf("Proxy server IP is %s\nUpper level dns server IP is %s\nIP address for redirecting %s\n", servaddr, upservaddr, localaddr); 
+    
+//    char name[PACKET_SIZE];
+//    fgets(name, PACKET_SIZE, init);
+//    printf("First name in black list is %s\n", name);
+    
+    fclose(init);
 }
 
 void create_redirect_answer(unsigned char buf[], int numbytes)

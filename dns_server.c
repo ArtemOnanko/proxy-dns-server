@@ -18,27 +18,52 @@ void *get_in_addr(struct sockaddr *sa)
 
 int main(void)
 {
-        int sockfd, numbytes;
+        int sockfd, numbytes_recv, numbytes_send, labellen, i=0;
 	struct addrinfo hints;
 	struct sockaddr_storage their_addr;
 	unsigned char buf[PACKET_SIZE+4];
 	char s[INET6_ADDRSTRLEN];                   // for printf
         socklen_t addr_len;
-                  
+        
+        unsigned char *ptr = malloc(PACKET_SIZE);
+        unsigned char *name = malloc(PACKET_SIZE);
+        
+        
         load_init();
 	dns_setup(hints, &sockfd);
                  
         for(;;)                                 // start dns iterative server
         {
             printf("listener: waiting to recvfrom...\n");
-            numbytes = recvfrom(sockfd, buf, PACKET_SIZE + 4, 0, (struct sockaddr *)&their_addr, &addr_len);
-            printf("Received %i bytes of data from %s\n", numbytes, inet_ntop(their_addr.ss_family, get_in_addr((struct sockaddr *)&their_addr), s, sizeof s));
+            numbytes_recv = recvfrom(sockfd, buf, PACKET_SIZE + 4, 0, (struct sockaddr *)&their_addr, &addr_len);
+            printf("Received %i bytes of data from %s\n", numbytes_recv, inet_ntop(their_addr.ss_family, get_in_addr((struct sockaddr *)&their_addr), s, sizeof s));
             printf("\n");
-            for(int j = 0 ; j < numbytes; j++)
+            
+//            for(int j = 0 ; j < numbytes_recv; j++)
+//            {
+//                printf("%d ",buf[j]);
+//            }
+//            printf("\n");
+            
+            // Obtain addr from dns request in a simple way
+                        
+            ptr = buf + DNS_HEADER_LEN;
+            while ((labellen = *ptr++))
             {
-                printf("%d ",buf[j]);
+                  while (labellen--)
+                  {
+                      name[i++] = *ptr++;
+                      
+                      //printf("%c", *ptr++);
+                  }
+                  //printf(".");
+                  name[i++] = '.';
             }
-            printf("\n");
+            name[--i] = 0;
+            i = 0;
+                
+            printf("%s\n", name);
+            // Here should be check if addr is in black list
             	            
             int blacklist = 1;
             if(!blacklist)
@@ -49,23 +74,26 @@ int main(void)
             {
                 // host is not resolved  
                 
-                create_redirect_answer(buf, numbytes);
-            
-                for(int i = 0 ; i < numbytes+RESPONSE_SIZE; i++)
-                {
-                    printf("%d ",buf[i]);
-                }           
+                create_redirect_answer(buf, numbytes_recv);  
                 
-                if ((numbytes = sendto(sockfd, buf, (numbytes+RESPONSE_SIZE), 0, (struct sockaddr *)&their_addr, addr_len)) == -1) 
+//                for(int j = 0 ; j < numbytes_recv+RESPONSE_SIZE; j++)
+//                {
+//                    printf("%d ",buf[j]);
+//                }
+//                printf("\n");
+                
+                if ((numbytes_send = sendto(sockfd, buf, (numbytes_recv+RESPONSE_SIZE), 0, (struct sockaddr *)&their_addr, addr_len)) == -1) 
                 {
                     perror("talker: sendto");
                     exit(1);
                 }
                            
-               printf("talker: sent %d bytes to %s\n", numbytes, inet_ntop(their_addr.ss_family, get_in_addr((struct sockaddr *)&their_addr), s, sizeof s));
+               printf("talker: sent %d bytes to %s\n", numbytes_send, inet_ntop(their_addr.ss_family, get_in_addr((struct sockaddr *)&their_addr), s, sizeof s));
             }
         }
 	close(sockfd);
+        free(ptr);
+        free(name);
 	return 0;
 }
 

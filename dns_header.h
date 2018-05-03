@@ -1,9 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
-
 /* 
  * File:   dns_header.h
  * Author: artem
@@ -25,6 +19,7 @@
 #define MYPORT "53"	// the port users will be connecting to
 #define PACKET_SIZE 512
 #define RESPONSE_SIZE 16
+#define DNS_HEADER_LEN 12
 
 
 
@@ -34,4 +29,4 @@ char localaddr[16];
 
 void load_init(void);
 void dns_setup(struct addrinfo hints, int* sockfd);
-void create_resend_answer(unsigned char buf[], int numbytes);
+void create_redirect_answer(unsigned char buf[], int numbytes);
