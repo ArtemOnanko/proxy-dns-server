@@ -1,6 +1,10 @@
 192.168.3.100
 8.8.8.8
-192.168.3.1
+127.0.0.1
 www.google.com
-www.youtube.com
-www.facebook.com
+www.google.com11$
+www.youtube111.com/
+www.facebook22.com/
+www.OLx.com/
+12345321
+

@@ -10,8 +10,9 @@
 // get sockaddr, IPv4 or IPv6:
 void *get_in_addr(struct sockaddr *sa)
 {
-	if (sa->sa_family == AF_INET) {
-		return &(((struct sockaddr_in*)sa)->sin_addr);
+	if (sa->sa_family == AF_INET) 
+        {
+            return &(((struct sockaddr_in*)sa)->sin_addr);
 	}
 	return &(((struct sockaddr_in6*)sa)->sin6_addr);
 }
@@ -28,25 +29,8 @@ int main(void)
         unsigned char *ptr = malloc(PACKET_SIZE);
         unsigned char *name = malloc(PACKET_SIZE);
         
-        
-        load_init();
-	dns_setup(hints, &sockfd);
-                 
-        for(;;)                                 // start dns iterative server
+        void parse_dns_name(void)
         {
-            printf("listener: waiting to recvfrom...\n");
-            numbytes_recv = recvfrom(sockfd, buf, PACKET_SIZE + 4, 0, (struct sockaddr *)&their_addr, &addr_len);
-            printf("Received %i bytes of data from %s\n", numbytes_recv, inet_ntop(their_addr.ss_family, get_in_addr((struct sockaddr *)&their_addr), s, sizeof s));
-            printf("\n");
-            
-//            for(int j = 0 ; j < numbytes_recv; j++)
-//            {
-//                printf("%d ",buf[j]);
-//            }
-//            printf("\n");
-            
-            // Obtain addr from dns request in a simple way
-                        
             ptr = buf + DNS_HEADER_LEN;
             while ((labellen = *ptr++))
             {
@@ -61,27 +45,46 @@ int main(void)
             }
             name[--i] = 0;
             i = 0;
+        }
+                
+        int loaded = load_init();
+        if(loaded == FALSE)
+        {
+            printf("Couldn't load structure!\n");
+            exit(EXIT_FAILURE);
+        }
+        
+        print_trie(root, 0, buf); 
+        
+        search("www.google.com11");
+	
+        dns_setup(hints, &sockfd);
+                 
+        for(;;)                                 // start dns iterative server
+        {
+            printf("listener: waiting to recvfrom...\n");
+            numbytes_recv = recvfrom(sockfd, buf, PACKET_SIZE + 4, 0, (struct sockaddr *)&their_addr, &addr_len);
+            printf("Received %i bytes of data from %s\n", numbytes_recv, inet_ntop(their_addr.ss_family, get_in_addr((struct sockaddr *)&their_addr), s, sizeof s));
+            printf("\n");
+                      
+            parse_dns_name();    // Obtain addr from dns request in a simple way
                 
             printf("%s\n", name);
-            // Here should be check if addr is in black list
+            
+            // Here should be the check if addr is in black list
             	            
-            int blacklist = 1;
+            int blacklist = 0;
+            
             if(!blacklist)
             {
-                // проксируем запрос на сервер гугл
+                // проксируем запрос на сервер гугл используя многопоточность
             }
             else
             {
                 // host is not resolved  
                 
                 create_redirect_answer(buf, numbytes_recv);  
-                
-//                for(int j = 0 ; j < numbytes_recv+RESPONSE_SIZE; j++)
-//                {
-//                    printf("%d ",buf[j]);
-//                }
-//                printf("\n");
-                
+                                
                 if ((numbytes_send = sendto(sockfd, buf, (numbytes_recv+RESPONSE_SIZE), 0, (struct sockaddr *)&their_addr, addr_len)) == -1) 
                 {
                     perror("talker: sendto");
@@ -144,3 +147,41 @@ void dns_setup(struct addrinfo hints, int* sockfd)
 	freeaddrinfo(servinfo);    
 }
 
+int search(char* word) 
+{
+    node* current = root;
+    int index = 0;
+    int i = 0;
+    char c = 0;
+    
+    for (i = 0; i < strlen(word); i++) 
+    {
+        c = word[i];
+        if (c >= 'a' && c <= 'z')              // letters
+            index = c - 'a';
+        else if (c >= '0' && c <= '9')         // numbers
+            index = c + ALPHABET_LENGTH -'0';
+        else if (c == '.')                     // dot
+            index = ALLOWED_SIGNS - 2;
+        else if (c == '/')                      // slash
+            index = ALLOWED_SIGNS - 1;
+          
+        if (current -> children[index] == NULL) 
+        {
+            printf("No such word in the file\n");
+            return FALSE;
+        } 
+        else
+            current = current -> children[index];
+    }
+    if (current -> is_word == TRUE) 
+    {
+        printf("There is such word in the file\n");
+        return TRUE;                    // there is such word in the file
+    }       
+    else 
+    {
+        printf("No such word in the file\n");
+        return FALSE;
+    }
+}

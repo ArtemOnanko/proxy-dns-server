@@ -8,48 +8,108 @@
 
 FILE*  init;
 
-unsigned char response[] = {0xc0, 0x0c, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x02, 0x58, 0x00, 0x04, 0, 0, 0, 0}; // 4 last bytes for redirecting ip addr
+unsigned char response[] = {0xc0, 0x0c, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x02, 0x58, 0x00, 0x04, 0, 0, 0, 0};  // 4 last bytes for redirecting ip addr
 
-void load_init(void)
+int load_init(void)
 {
+    node* insertSymbol(node* current, int i) ;
+    node* createNewNode(void);
+    
     int i,j = 0, counter = 4;
     char xxx[3];    
     init = fopen("server.txt", "r");
-    for(i = 0; servaddr[i] = fgetc(init), servaddr[i] != '\n'; i++)     // parse servaddr
+    // checking if file opens
+    if (init == NULL) 
     {
+        return FALSE;
     }
-    servaddr[i] = '\0';
-    for(i = 0; upservaddr[i] = fgetc(init), upservaddr[i] != '\n'; i++) // parse upservaddr
+    else
     {
-    }
-    upservaddr[i] = '\0';
-    for(i = 0; localaddr[i] = fgetc(init), localaddr[i] != '\n'; i++)   // parse localaddr and insert it to response[]
-    {   
-        if(localaddr[i] != '.')
+        for(i = 0; servaddr[i] = fgetc(init), servaddr[i] != '\n'; i++)     // parse servaddr
         {
-            xxx[j++] = localaddr[i];
         }
-        else
+        servaddr[i] = '\0';
+        for(i = 0; upservaddr[i] = fgetc(init), upservaddr[i] != '\n'; i++) // parse upservaddr
         {
-            response[RESPONSE_SIZE - counter] = atoi(xxx);
-            counter--;
-            for(j = 0; j < sizeof(xxx); j++)
+        }
+        upservaddr[i] = '\0';
+        for(i = 0; localaddr[i] = fgetc(init), localaddr[i] != '\n'; i++)   // parse localaddr and insert it to response[]
+        {   
+            if(localaddr[i] != '.')
             {
-                xxx[j] = 0;
+                xxx[j++] = localaddr[i];
             }
-            j = 0;
-        }   
+            else
+            {
+                response[RESPONSE_SIZE - counter] = atoi(xxx);
+                counter--;
+                for(j = 0; j < sizeof(xxx); j++)
+                {
+                    xxx[j] = 0;
+                }
+                j = 0;
+            }   
+        }
+        response[RESPONSE_SIZE - counter] = atoi(xxx);
+        localaddr[i] = '\0';
+    
+        printf("Proxy server IP is %s\nUpper level dns server IP is %s\nIP address for redirecting %s\n", servaddr, upservaddr, localaddr); 
+    
+        // start loading structure into memory
+        root = createNewNode();
+    
+        // defining current node pointing to root
+        node* current = root;
+        
+        int index = 0; // index for children[] (up to ALLOWED_SIGN value)
+        char word[PACKET_SIZE];
+        char letter;
+        for(;;) 
+        {
+            //getting strings from init file one by one
+            fgets(word, PACKET_SIZE, init);
+            for (i = 0; word[i] != 10; i++) // till the eol
+            {
+                letter = word[i];
+                if(letter >= 'A' && letter <= 'Z')            // upper case letters
+                {
+                    letter = letter + ('a' - 'A');                    // make lower case
+                    index = letter - 'a';  
+                }
+                else if (letter >= 'a' && letter <= 'z')      // lower case letters
+                {
+                    index = letter - 'a';                     // index 0 --> 'a', index 1 --> 'b' ...
+                }
+                else if (letter >= '0' && letter <= '9')      // numbers
+                {
+                    index = letter +ALPHABET_LENGTH - '0';
+                }
+                else if (letter == '.')                       // dot
+                {
+                    index = ALLOWED_SIGNS - 2;  
+                }
+                else if (letter == '/')                       // slash
+                {
+                    index = ALLOWED_SIGNS - 1;
+                }
+                else
+                {
+                    printf("The word contains unresolved symbols\n");
+                    current = root;
+                    break;
+                }
+                current = insertSymbol(current, index);
+            }
+            
+            current -> is_word = TRUE;
+            current = root;
+            
+            if (feof(init)) // till the eof
+                break;
+        }
+        fclose(init);
+        return TRUE;
     }
-    response[RESPONSE_SIZE - counter] = atoi(xxx);
-    localaddr[i] = '\0';
-    
-    printf("Proxy server IP is %s\nUpper level dns server IP is %s\nIP address for redirecting %s\n", servaddr, upservaddr, localaddr); 
-    
-//    char name[PACKET_SIZE];
-//    fgets(name, PACKET_SIZE, init);
-//    printf("First name in black list is %s\n", name);
-    
-    fclose(init);
 }
 
 void create_redirect_answer(unsigned char buf[], int numbytes)
@@ -60,3 +120,77 @@ void create_redirect_answer(unsigned char buf[], int numbytes)
    
     memcpy(&buf[numbytes], response, RESPONSE_SIZE);
 }
+
+node* createNewNode(void) 
+{
+    node* newNode = malloc(sizeof (node));
+    newNode -> is_word = 0;
+    for (int i = 0; i < ALLOWED_SIGNS; i++) 
+    {
+        newNode -> children[i] = NULL;
+    }
+    return newNode;
+}
+
+// function for symbol "insertion" to the trie
+node* insertSymbol(node* current, int i) 
+{
+    if (current -> children[i] == NULL) 
+    {
+        node* newNode = createNewNode();
+        current -> children[i] = newNode;
+        current = newNode;
+    } 
+    else 
+    {
+        current = current -> children[i];
+    }
+    return current;
+}
+
+// unloads structure from memory.  Returns true if successful else false.
+int unload(void) 
+{
+    void freeNode(node* node) 
+    {
+        for (int i = 0; i < ALLOWED_SIGNS; i++) 
+        {
+            // if node's children point to somewhere
+            if (node -> children[i] != NULL) 
+            {
+                // recursevely calling next level node and checking it's children
+                freeNode(node -> children[i]);
+            }
+        }
+        // if node's children point to nowhere - clearing this node
+        free(node);
+    }
+    // should free all malloced nodes plus root node
+    freeNode(root);
+    return TRUE;
+}
+
+// print out whole statistics
+void print_trie(node* node, int depth, unsigned char buf[]) 
+{
+    for (int i = 0; i < ALLOWED_SIGNS; i++) 
+    {
+        if (node -> children[i] != NULL) 
+        {
+            if (i == (ALLOWED_SIGNS - 2))           // dot
+                buf[depth] = '.';
+            else if (i == (ALLOWED_SIGNS - 1))      // slash
+                buf[depth] = '/';
+            else if (i > ALPHABET_LENGTH)
+                buf[depth] = i - ALPHABET_LENGTH + '0';
+            else                                    // letters 
+                buf[depth] = i + 'a';
+            print_trie(node -> children[i], depth + 1, buf);
+        } 
+        else
+            buf[depth] = '\0';
+    }
+    if (node -> is_word == TRUE)
+        printf("%s\n", buf);
+}
+

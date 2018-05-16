@@ -20,13 +20,30 @@
 #define PACKET_SIZE 512
 #define RESPONSE_SIZE 16
 #define DNS_HEADER_LEN 12
-
-
+#define ALLOWED_SIGNS 38   // small case letters (26), nubmers (10), dot, slash
+#define TRUE 1
+#define FALSE 0
+#define ALPHABET_LENGTH 26
 
 char servaddr[16];
 char upservaddr[16];
 char localaddr[16]; 
 
-void load_init(void);
+int load_init(void);
 void dns_setup(struct addrinfo hints, int* sockfd);
 void create_redirect_answer(unsigned char buf[], int numbytes);
+
+// defining node structure
+typedef struct node 
+{
+    int is_word;
+    struct node* children[ALLOWED_SIGNS];
+}
+node;
+
+// defining root node
+node* root;
+
+void print_trie(node* node, int depth, unsigned char buf[]);
+int unload(void);
+int search(char* word);
