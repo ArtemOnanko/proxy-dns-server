@@ -8,7 +8,7 @@
 
 FILE*  init;
 
-unsigned char response[] = {0xc0, 0x0c, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x02, 0x58, 0x00, 0x04, 0, 0, 0, 0};  // 4 last bytes for redirecting ip addr
+char response[] = {0xc0, 0x0c, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x02, 0x58, 0x00, 0x04, 0, 0, 0, 0};  // 4 last bytes for redirecting ip addr
 
 int load_init(void)
 {
@@ -112,7 +112,7 @@ int load_init(void)
     }
 }
 
-void create_redirect_answer(unsigned char buf[], int numbytes)
+void create_redirect_answer(char buf[], int numbytes)
 {
     buf[2] = buf[2]|0x84;      // answer, authoritative
     buf[3] = 0x00;             // error 5 (or 0 for local address)
@@ -171,7 +171,7 @@ int unload(void)
 }
 
 // print out whole statistics
-void print_trie(node* node, int depth, unsigned char buf[]) 
+void print_trie(node* node, int depth, char buf[]) 
 {
     for (int i = 0; i < ALLOWED_SIGNS; i++) 
     {

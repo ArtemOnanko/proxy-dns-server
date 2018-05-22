@@ -15,6 +15,8 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
+#include<netinet/udp.h>   //Provides declarations for udp header
+#include<netinet/ip.h>    //Provides declarations for ip header
 
 #define MYPORT "53"	// the port users will be connecting to
 #define PACKET_SIZE 512
@@ -31,7 +33,7 @@ char localaddr[16];
 
 int load_init(void);
 void dns_setup(struct addrinfo hints, int* sockfd);
-void create_redirect_answer(unsigned char buf[], int numbytes);
+void create_redirect_answer( char buf[], int numbytes);
 
 // defining node structure
 typedef struct node 
@@ -44,6 +46,7 @@ node;
 // defining root node
 node* root;
 
-void print_trie(node* node, int depth, unsigned char buf[]);
+void print_trie(node* node, int depth,  char buf[]);
 int unload(void);
-int search(char* word);
+int search( char* word);
+int create_forward_message(char* dns_request, int request_len, struct sockaddr_storage source, char* serv);
