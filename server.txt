@@ -1,8 +1,10 @@
 192.168.3.100
 8.8.8.8
-127.0.0.1
+192.168.1.111
 www.google.com.ua
 www.youtube.com
 www.facebook.com
 www.olx.com
+www.theringer.com
+theringer.com
 

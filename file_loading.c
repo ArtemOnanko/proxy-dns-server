@@ -1,14 +1,9 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
-
 #include "dns_header.h"
 
 FILE*  init;
 
-char response[] = {0xc0, 0x0c, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x02, 0x58, 0x00, 0x04, 0, 0, 0, 0};  // 4 last bytes for redirecting ip addr
+// 4 last bytes for redirecting ip addr
+char response[] = {0xc0, 0x0c, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x02, 0x58, 0x00, 0x04, 0, 0, 0, 0};  
 
 int load_init(void)
 {
@@ -18,6 +13,7 @@ int load_init(void)
     int i,j = 0, counter = 4;
     char xxx[3];    
     init = fopen("server.txt", "r");
+    
     // checking if file opens
     if (init == NULL) 
     {
@@ -61,9 +57,10 @@ int load_init(void)
         // defining current node pointing to root
         node* current = root;
         
-        int index = 0; // index for children[] (up to ALLOWED_SIGN value)
+        // index for children[] (up to ALLOWED_SIGN value)
+        int index = 0; 
         char word[PACKET_SIZE];
-        char letter;
+        char letter = 0;
         for(;;) 
         {
             //getting strings from init file one by one
@@ -73,7 +70,7 @@ int load_init(void)
                 letter = word[i];
                 if(letter >= 'A' && letter <= 'Z')            // upper case letters
                 {
-                    letter = letter + ('a' - 'A');                    // make lower case
+                    letter = letter + ('a' - 'A');            // make lower case
                     index = letter - 'a';  
                 }
                 else if (letter >= 'a' && letter <= 'z')      // lower case letters
@@ -94,7 +91,7 @@ int load_init(void)
                 }
                 else
                 {
-                    printf("The word contains unresolved symbols\n");
+                    printf("The word contains unresolved symbols and would be skipped\n");
                     current = root;
                     break;
                 }
@@ -104,7 +101,7 @@ int load_init(void)
             current -> is_word = TRUE;
             current = root;
             
-            if (feof(init)) // till the eof
+            if (feof(init))   // till the eof
                 break;
         }
         fclose(init);
@@ -119,6 +116,12 @@ void create_redirect_answer(char buf[], int numbytes)
     buf[7] = 1;                // one respond
    
     memcpy(&buf[numbytes], response, RESPONSE_SIZE);
+    if ((numbytes_send = sendto(sockfd, buf, (numbytes_recv+RESPONSE_SIZE), 0, (struct sockaddr *)&their_addr, addr_len)) == -1) 
+    {
+        perror("talker: sendto");
+        exit(1);
+    }        
+    
 }
 
 node* createNewNode(void) 
@@ -170,7 +173,7 @@ int unload(void)
     return TRUE;
 }
 
-// print out whole statistics
+// print out whole structure
 void print_trie(node* node, int depth, char buf[]) 
 {
     for (int i = 0; i < ALLOWED_SIGNS; i++) 

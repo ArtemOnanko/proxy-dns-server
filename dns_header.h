@@ -15,8 +15,8 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
-#include<netinet/udp.h>   //Provides declarations for udp header
-#include<netinet/ip.h>    //Provides declarations for ip header
+#include<netinet/udp.h> 
+#include<netinet/ip.h> 
 
 #define MYPORT "53"	// the port users will be connecting to
 #define PACKET_SIZE 512
@@ -27,15 +27,14 @@
 #define FALSE 0
 #define ALPHABET_LENGTH 26
 
+// global variables with ip addresses from init file
+
 char servaddr[16];
 char upservaddr[16];
 char localaddr[16]; 
 
-int load_init(void);
-void dns_setup(struct addrinfo hints, int* sockfd);
-void create_redirect_answer( char buf[], int numbytes);
+// defining node for creating trie structure
 
-// defining node structure
 typedef struct node 
 {
     int is_word;
@@ -46,7 +45,11 @@ node;
 // defining root node
 node* root;
 
+void* get_in_addr(struct sockaddr *sa);
+int load_init(void);
+void dns_setup(struct addrinfo hints, int* sockfd);
+void create_redirect_answer( char buf[], int numbytes);
 void print_trie(node* node, int depth,  char buf[]);
 int unload(void);
-int search( char* word);
-int create_forward_message(char* dns_request, int request_len, struct sockaddr_storage source, char* serv);
+int search(char* word);
+void create_forward_message(char* dns_request, int request_len, struct sockaddr_storage source, char* serv);
