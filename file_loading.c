@@ -116,11 +116,7 @@ void create_redirect_answer(char buf[], int numbytes)
     buf[7] = 1;                // one respond
    
     memcpy(&buf[numbytes], response, RESPONSE_SIZE);
-    if ((numbytes_send = sendto(sockfd, buf, (numbytes_recv+RESPONSE_SIZE), 0, (struct sockaddr *)&their_addr, addr_len)) == -1) 
-    {
-        perror("talker: sendto");
-        exit(1);
-    }        
+ 
     
 }
 

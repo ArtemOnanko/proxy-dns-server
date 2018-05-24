@@ -70,7 +70,12 @@ int main(void)
                 // host is not resolved  
                 create_redirect_answer(buf, numbytes_recv);  
                                 
-               
+                if ((numbytes_send = sendto(sockfd, buf, (numbytes_recv+RESPONSE_SIZE), 0, (struct sockaddr *)&their_addr, addr_len)) == -1) 
+                {
+                    perror("talker: sendto");
+                    exit(1);
+                }       
+                
                 printf("talker: sent %d bytes to %s\n", numbytes_send, inet_ntop(their_addr.ss_family, get_in_addr((struct sockaddr *)&their_addr), s, sizeof s));
             }
         }
