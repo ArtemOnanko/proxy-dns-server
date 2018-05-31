@@ -1,17 +1,16 @@
 #include "dns_header.h"
 
-FILE*  init;
-
 // 4 last bytes for redirecting ip addr
 char response[] = {0xc0, 0x0c, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x02, 0x58, 0x00, 0x04, 0, 0, 0, 0};  
 
 int load_init(void)
 {
+    FILE*  init;
     node* insertSymbol(node* current, int i) ;
     node* createNewNode(void);
     
-    int i,j = 0, counter = 4;
-    char xxx[3];    
+    int i = 0, j = 0, counter = 4;
+    char xxx[4];    
     init = fopen("server.txt", "r");
     
     // checking if file opens
@@ -21,15 +20,17 @@ int load_init(void)
     }
     else
     {
-        for(i = 0; servaddr[i] = fgetc(init), servaddr[i] != '\n'; i++)     // parse servaddr
+        for(i = 0; servaddr[i] = fgetc(init),servaddr[i] != '\n';  i++)     // parse servaddr
         {
         }
         servaddr[i] = '\0';
-        for(i = 0; upservaddr[i] = fgetc(init), upservaddr[i] != '\n'; i++) // parse upservaddr
+        
+        for(i = 0; upservaddr[i] = fgetc(init),upservaddr[i] != '\n';  i++) // parse upservaddr
         {
         }
         upservaddr[i] = '\0';
-        for(i = 0; localaddr[i] = fgetc(init), localaddr[i] != '\n'; i++)   // parse localaddr and insert it to response[]
+        
+        for(i = 0; localaddr[i] = fgetc(init),localaddr[i] != '\n'; i++)   // parse localaddr and insert it to response[]
         {   
             if(localaddr[i] != '.')
             {
@@ -37,6 +38,7 @@ int load_init(void)
             }
             else
             {
+                xxx[3] = '\0';
                 response[RESPONSE_SIZE - counter] = atoi(xxx);
                 counter--;
                 for(j = 0; j < sizeof(xxx); j++)
@@ -46,8 +48,8 @@ int load_init(void)
                 j = 0;
             }   
         }
-        response[RESPONSE_SIZE - counter] = atoi(xxx);
-        localaddr[i] = '\0';
+        xxx[3] = '\0';
+        response[RESPONSE_SIZE - counter] = atoi((const char *)xxx);
     
         printf("Proxy server IP is %s\nUpper level dns server IP is %s\nIP address for redirecting %s\n", servaddr, upservaddr, localaddr); 
     
@@ -116,8 +118,6 @@ void create_redirect_answer(char buf[], int numbytes)
     buf[7] = 1;                // one respond
    
     memcpy(&buf[numbytes], response, RESPONSE_SIZE);
- 
-    
 }
 
 node* createNewNode(void) 
@@ -148,7 +148,7 @@ node* insertSymbol(node* current, int i)
 }
 
 // unloads structure from memory.  Returns true if successful else false.
-int unload(void) 
+void unload(void) 
 {
     void freeNode(node* node) 
     {
@@ -166,7 +166,6 @@ int unload(void)
     }
     // should free all malloced nodes plus root node
     freeNode(root);
-    return TRUE;
 }
 
 // print out whole structure

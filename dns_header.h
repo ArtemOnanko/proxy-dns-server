@@ -1,6 +1,6 @@
 /* 
  * File:   dns_header.h
- * Author: artem
+ * Author: artem.onanko@gmail.com
  *
  * Created on May 2, 2018, 12:21 PM
  */
@@ -17,6 +17,7 @@
 #include <netdb.h>
 #include<netinet/udp.h> 
 #include<netinet/ip.h> 
+#include <signal.h>
 
 #define MYPORT "53"	// the port users will be connecting to
 #define PACKET_SIZE 512
@@ -29,9 +30,9 @@
 
 // global variables with ip addresses from init file
 
-char servaddr[16];
-char upservaddr[16];
-char localaddr[16]; 
+char servaddr[INET_ADDRSTRLEN];
+char upservaddr[INET_ADDRSTRLEN];
+char localaddr[INET_ADDRSTRLEN]; 
 
 // defining node for creating trie structure
 
@@ -50,6 +51,6 @@ int load_init(void);
 void dns_setup(struct addrinfo hints, int* sockfd);
 void create_redirect_answer( char buf[], int numbytes);
 void print_trie(node* node, int depth,  char buf[]);
-int unload(void);
+void unload(void);
 int search(char* word);
 void create_forward_message(char* dns_request, int request_len, struct sockaddr_storage source, char* serv);

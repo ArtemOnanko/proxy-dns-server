@@ -1,98 +1,109 @@
 /* 
- * File:   main.c
- * Author: artem
+ * File:   dns_server.c
+ * Author: artem.onanko@gmail.com
  *
  * Created on April 4, 2018, 2:40 PM
  */
 
 #include "dns_header.h"
-
+ 
 int main(void)
-{
-        int sockfd, numbytes_recv, numbytes_send, labellen, i=0;
-	struct addrinfo hints;
-	struct sockaddr_storage their_addr;
-	char buf[PACKET_SIZE+4];
-        char* name = malloc(PACKET_SIZE);
-        char* ptr = malloc(PACKET_SIZE);
-	char s[INET6_ADDRSTRLEN];                 
-        socklen_t addr_len;
-                       
-        // load ip addresses, and trie structure from init file
-        int loaded = load_init();
-        if(loaded == FALSE)
-        {
-            printf("Couldn't open init file and load structure!\n");
-            exit(EXIT_FAILURE);
-        }
+{      
+    int sockfd, numbytes_recv, numbytes_send, labellen, i = 0;
+    struct addrinfo hints;
+    struct sockaddr_storage their_addr;
+    char buf[PACKET_SIZE+4];
+    char* parsed_name = malloc(PACKET_SIZE);
+    char* ptr_parsing;
+    char s[INET_ADDRSTRLEN];                 
+    socklen_t addr_len = sizeof(struct sockaddr);
         
-        // print out the whole structure
-//        print_trie(root, 0, buf); 
-             
-        // setting up our proxy server for receiving datagrams on port 53
-        dns_setup(hints, &sockfd);
-                 
-        // starting iterative udp server
-        for(;;)                                 
-        {
-            printf("listener: waiting to recvfrom...\n");
-            numbytes_recv = recvfrom(sockfd, buf, PACKET_SIZE + 4, 0, (struct sockaddr *)&their_addr, &addr_len);
-//            printf("Received %i bytes of data from %s\n", numbytes_recv, inet_ntop(their_addr.ss_family, get_in_addr((struct sockaddr *)&their_addr), s, sizeof s));
-//            printf("\n");
-                      
-            // Obtain addr from dns request in a simple way
-            {
-                ptr = buf + DNS_HEADER_LEN;
+    // handler for the interrupt signal (to clean up)
+    void sigint_handler(int sig)
+    {
+        free(parsed_name);
+        unload();
+        close(sockfd);
+        exit(EXIT_SUCCESS);
+    }
+        
+    struct sigaction sa;
+    sa.sa_handler = sigint_handler;
+    sa.sa_flags = 0;
+    sigemptyset(&sa.sa_mask);
             
-                while ((labellen = *ptr++))
-                {
-                    while (labellen--)
-                    {
-                        name[i++] = *ptr++;
-                    }
-                    name[i++] = '.';
-                }
-                name[--i] = 0;
-                i = 0;
-                printf("%s\n", name);
-            }
+    if(sigaction(SIGINT, &sa, NULL) == -1)
+    {
+        perror("sigaction");
+        exit(EXIT_FAILURE);
+    }
                        
-            // Here should be the check if addr is in black list 	            
-            int blacklist = search(name);
+    // load ip addresses, and trie structure from init file
+    int loaded = load_init();
+    if(loaded == FALSE)
+    {
+        printf("Couldn't open init file and load structure!\n");
+        exit(EXIT_FAILURE);
+    }
+        
+    // print out the whole structure
+    print_trie(root, 0, buf); 
+             
+    // setting up our proxy server for receiving datagrams on port 53
+    dns_setup(hints, &sockfd);
+                 
+    // starting iterative udp server
+    for(;;)                                 
+    {
+        printf("proxy server: waiting to recvfrom...\n");
+        numbytes_recv = recvfrom(sockfd, buf, PACKET_SIZE + 4, 0, (struct sockaddr *)&their_addr, &addr_len);
+        printf("Received %i bytes of data from %s\n", numbytes_recv, inet_ntop(AF_INET, get_in_addr((struct sockaddr *)&their_addr), s, INET_ADDRSTRLEN));
+                                  
+        // Obtain addr from dns request in a simple way
+        {
+            ptr_parsing = buf + DNS_HEADER_LEN;
             
-            if(!blacklist)
+            while ((labellen = *ptr_parsing++))
             {
-                // forwarding message to dns upserver
-                create_forward_message(buf, numbytes_recv, their_addr, upservaddr);
-            }
-            else
-            {
-                // host is not resolved  
-                create_redirect_answer(buf, numbytes_recv);  
-                                
-                if ((numbytes_send = sendto(sockfd, buf, (numbytes_recv+RESPONSE_SIZE), 0, (struct sockaddr *)&their_addr, addr_len)) == -1) 
+                while (labellen--)
                 {
-                    perror("talker: sendto");
-                    exit(1);
-                }       
-                
-                printf("talker: sent %d bytes to %s\n", numbytes_send, inet_ntop(their_addr.ss_family, get_in_addr((struct sockaddr *)&their_addr), s, sizeof s));
+                    parsed_name[i++] = *ptr_parsing++;
+                }
+                parsed_name[i++] = '.';
             }
+            parsed_name[--i] = 0;
+            i = 0;
+            printf("%s\n", parsed_name);
+        }               
+                                         
+        // Here should be the check if addr is in black list 	            
+        int blacklist = search(parsed_name);
+            
+        if(!blacklist)
+        {
+            // forwarding message to dns upserver
+            create_forward_message(buf, numbytes_recv, their_addr, upservaddr);
         }
-        free(name);
-        free(ptr);
-	close(sockfd);
-	return 0;
+        else
+        {
+            // host is not resolved  
+            create_redirect_answer(buf, numbytes_recv);  
+                                
+            if ((numbytes_send = sendto(sockfd, buf, (numbytes_recv+RESPONSE_SIZE), 0, (struct sockaddr *)&their_addr, addr_len)) == -1) 
+            {
+                perror("proxy server: sendto");
+                exit(EXIT_FAILURE);
+            }       
+            printf("proxy server: sent %d bytes to %s\n", numbytes_send, inet_ntop(their_addr.ss_family, get_in_addr((struct sockaddr *)&their_addr), s, sizeof s));
+        }
+    }
+    return 0;
 }
 
 // get sockaddr, IPv4 or IPv6:
 void* get_in_addr(struct sockaddr *sa)
 {
-	if (sa->sa_family == AF_INET) 
-        {
-            return &(((struct sockaddr_in*)sa)->sin_addr);
-	}
-	return &(((struct sockaddr_in6*)sa)->sin6_addr);
+    return &(((struct sockaddr_in*)sa)->sin_addr);
 }
 
 void dns_setup(struct addrinfo hints, int* sockfd)
@@ -108,7 +119,7 @@ void dns_setup(struct addrinfo hints, int* sockfd)
     if ((rv = getaddrinfo(servaddr, MYPORT, &hints, &servinfo)) != 0) 
     {
         fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
-	exit(1);
+	exit(EXIT_FAILURE);
     }
 
     // loop through all the results and bind to the first we can
@@ -116,7 +127,7 @@ void dns_setup(struct addrinfo hints, int* sockfd)
     {
         if ((*sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) 
         {
-            perror("listener: socket");
+            perror("proxy server: socket");
             continue;
         }
         // loose the "Address already in use" message
@@ -128,18 +139,18 @@ void dns_setup(struct addrinfo hints, int* sockfd)
         if (bind(*sockfd, p->ai_addr, p->ai_addrlen) == -1)
         {
             close(*sockfd);
-            perror("listener: bind");
+            perror("proxy server: bind");
             continue;
         }
         break;
-    }
-        	
+    }	
+    
     if (p == NULL) 
     {
-        freeaddrinfo(servinfo);  
-        fprintf(stderr, "listener: failed to bind socket\n");
-        exit(1);
+        fprintf(stderr, "proxy server: failed to bind socket\n");
+        exit(EXIT_FAILURE);
     }
+    freeaddrinfo(servinfo);
 }
 
 int search(char* word) 
@@ -190,7 +201,7 @@ int search(char* word)
  // from https://www.binarytides.com/raw-udp-sockets-c-linux/
 void create_forward_message(char* dns_request, int request_len, struct sockaddr_storage source, char* serv)   
 {
-    char str[INET6_ADDRSTRLEN];  
+    char str[INET_ADDRSTRLEN];  
     struct sockaddr* source_addr;
     source_addr = (struct sockaddr*)&source;
      
@@ -238,7 +249,7 @@ void create_forward_message(char* dns_request, int request_len, struct sockaddr_
     {
         //socket creation failed, may be because of non-root privileges
         perror("Failed to create raw socket");
-        exit(1);
+        exit(EXIT_FAILURE);
     }
      
     //Datagram to represent the packet
@@ -306,7 +317,7 @@ void create_forward_message(char* dns_request, int request_len, struct sockaddr_
     if (sendto (s, datagram, iph->tot_len ,  0, (struct sockaddr *) &sin, sizeof (sin)) < 0)
     {
         perror("sendto failed");
-        exit(1);
+        exit(EXIT_FAILURE);
     }
     //Data send successfully
     else
