@@ -122,7 +122,7 @@ void create_redirect_answer(char buf[], int numbytes)
 
 node* createNewNode(void) 
 {
-    node* newNode = malloc(sizeof (node));
+    node* newNode = xmalloc(sizeof (node));
     newNode -> is_word = 0;
     for (int i = 0; i < ALLOWED_SIGNS; i++) 
     {

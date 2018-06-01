@@ -1,6 +1,6 @@
-192.168.3.100
+192.168.1.100
 8.8.8.8
-192.168.3.1
+192.168.1.1
 www.google.com.ua
 www.youtube.com
 www.facebook.com

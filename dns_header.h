@@ -54,3 +54,4 @@ void print_trie(node* node, int depth,  char buf[]);
 void unload(void);
 int search(char* word);
 void create_forward_message(char* dns_request, int request_len, struct sockaddr_storage source, char* serv);
+void* xmalloc(size_t size);

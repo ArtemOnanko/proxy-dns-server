@@ -6,14 +6,27 @@
  */
 
 #include "dns_header.h"
- 
+
+// wrapper for malloc
+void* xmalloc(size_t size)
+{
+    void *p;
+    p = malloc (size);
+    if(!p)
+    {
+        perror("xmalloc");
+        exit(EXIT_FAILURE);
+    }
+    return p;
+}
+
 int main(void)
 {      
     int sockfd, numbytes_recv, numbytes_send, labellen, i = 0;
     struct addrinfo hints;
     struct sockaddr_storage their_addr;
     char buf[PACKET_SIZE+4];
-    char* parsed_name = malloc(PACKET_SIZE);
+    char* parsed_name = xmalloc(PACKET_SIZE);
     char* ptr_parsing;
     char s[INET_ADDRSTRLEN];                 
     socklen_t addr_len = sizeof(struct sockaddr);
@@ -198,7 +211,6 @@ int search(char* word)
     }
 }
 
- // from https://www.binarytides.com/raw-udp-sockets-c-linux/
 void create_forward_message(char* dns_request, int request_len, struct sockaddr_storage source, char* serv)   
 {
     char str[INET_ADDRSTRLEN];  
@@ -307,7 +319,7 @@ void create_forward_message(char* dns_request, int request_len, struct sockaddr_
     psh.udp_length = htons(sizeof(struct udphdr) + request_len );
      
     int psize = sizeof(struct pseudo_header) + sizeof(struct udphdr) + request_len;
-    pseudogram = malloc(psize);
+    pseudogram = xmalloc(psize);
     memcpy(pseudogram , (char*) &psh , sizeof (struct pseudo_header));
     memcpy(pseudogram + sizeof(struct pseudo_header) , udph , sizeof(struct udphdr) + request_len);
      
